@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: server
+
+netty:
+  addr: localhost:9001
+
+server:
+  port: 9000
