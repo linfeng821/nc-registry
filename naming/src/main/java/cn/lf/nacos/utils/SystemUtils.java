@@ -1,4 +1,4 @@
-package cn.lf.nacos.util;
+package cn.lf.nacos.utils;
 
 
 import org.springframework.core.io.ClassPathResource;

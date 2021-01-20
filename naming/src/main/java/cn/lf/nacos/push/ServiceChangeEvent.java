@@ -21,7 +21,8 @@ public class ServiceChangeEvent extends ApplicationEvent {
         return service;
     }
 
-    public String getMessageId(){
+    public String getMessageId()
+    {
         return messageId;
     }
 }
