@@ -11,4 +11,5 @@ public interface NamingService {
     public void serviceFound(String namespaceId);
 
     public List<Instance> selectInstances(String serviceName);
+
 }

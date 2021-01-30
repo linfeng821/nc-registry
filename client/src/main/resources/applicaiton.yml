@@ -1,0 +1,14 @@
+
+registry:
+  discovery:
+    server-addr: localhost:9000
+  netty:
+    server-addr: localhost:9001
+
+
+spring:
+  application:
+    name: abc
+
+server:
+  port: 8081
