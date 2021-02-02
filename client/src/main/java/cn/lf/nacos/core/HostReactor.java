@@ -1,17 +1,27 @@
 package cn.lf.nacos.core;
 
 import cn.lf.nacos.common.Constants;
+import cn.lf.nacos.naming.NamingProxy;
+import cn.lf.nacos.netty.NettyClient;
 import cn.lf.nacos.pojo.ServiceInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.omg.CORBA.ServiceInformation;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.rmi.server.ServerCloneException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
 @Slf4j
 @Component
 public class HostReactor {
+
+    @Autowired
+    NamingProxy namingProxy;
 
     //客户端实例缓存Map   Map<serviceName,ServiceInfo>
     private Map<String, ServiceInfo> serviceInfoMap=new ConcurrentHashMap<>();
@@ -34,13 +44,14 @@ public class HostReactor {
     }
 
     public void updateServiceNow(String namespaceId){
-
+        namingProxy.queryList(namespaceId);
     }
 
     public ServiceInfo getServiceInfo0(String serviceName){
         return serviceInfoMap.get(serviceName);
     }
 
+    //返回客户端的缓存map
     public Map<String,ServiceInfo> getAllInstances(){
         return serviceInfoMap;
     }
@@ -55,6 +66,7 @@ public class HostReactor {
                 return thread;
             }
         });
+        //每15s拉取一次服务端的注册数据
         executor.scheduleWithFixedDelay(new UpdateTask(namespaceId),0, Constants.SERVICE_FOUND_REFRESH_INTEEVAL, TimeUnit.SECONDS);
     }
 
@@ -67,7 +79,38 @@ public class HostReactor {
         }
         @Override
         public void run() {
-
+            namingProxy.queryList(namespaceId);
         }
+    }
+
+    //收到服务端传来的实例信息，设置到客户端的缓存中
+    public void putService(Map<String, ServiceInfo> services){
+        serviceInfoMap=services;
+        log.info("更新客户端缓存成功，缓存实例map"+serviceInfoMap);
+
+        //更新完成后，还要更新一下nettyClient里的nettyServers，servers，nettyServer
+        //services里面的每个serviceInfo都包含所有健康列表的信息，所以只用随意拿一个就行
+        String clusters=null;
+        for(String key:serviceInfoMap.keySet()){
+            ServiceInfo serviceInfo=serviceInfoMap.get(key);
+            clusters=serviceInfo.getClusters();
+            break;
+        }
+        List<String> servers=new ArrayList<>();
+        List<String> nettyServers=new ArrayList<>();
+        Map<String,String> mappingMap=new HashMap<>();
+        String []str=clusters.split("##");
+        for(int i=0;i<str.length;i++){
+            String serverIp=str[i].split(",")[0];
+            String nettyServerIp=str[i].split(",")[1];
+            servers.add(serverIp);
+            nettyServers.add(nettyServerIp);
+            mappingMap.put(serverIp,nettyServerIp);
+        }
+        //把最新健康的列表以及对应关系重新赋值
+        NettyClient.servers=servers;
+        NettyClient.nettyServers=nettyServers;
+        NettyClient.mappingMap=mappingMap;
+        log.info("nettyClient可用的服务端ip更新了"+NettyClient.mappingMap);
     }
 }

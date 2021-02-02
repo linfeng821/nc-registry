@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface NamingService {
 
-    public void registryInstance(String ip,String port,String groupName,String ServiceName,String nameSpaceId);
+    public void registryInstance(String ip,int port,String groupName,String serviceName,String nameSpaceId);
 
     public void serviceFound(String namespaceId);
 
