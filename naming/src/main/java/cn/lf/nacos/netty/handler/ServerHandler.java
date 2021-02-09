@@ -4,6 +4,7 @@ import cn.lf.nacos.common.Constants;
 import cn.lf.nacos.core.ServiceManager;
 import cn.lf.nacos.netty.AcceptorIdleStateTrigger;
 import cn.lf.nacos.netty.MessageProtocol;
+import cn.lf.nacos.pojo.BeatInfo;
 import cn.lf.nacos.pojo.Instance;
 import cn.lf.nacos.pojo.ServiceInfo;
 import com.alibaba.fastjson.JSON;
@@ -37,7 +38,13 @@ public class ServerHandler extends SimpleChannelInboundHandler<MessageProtocol> 
         String msgStr=new String(msg.getContent());
         log.info("有消息来了。。。。。。。。。。。。。。");
         if(msgStr.startsWith(Constants.BEAT_ROUND)&&msgStr.endsWith(Constants.BEAT_ROUND)){
-
+            log.info("=====服务端接收到心跳消息如下======");
+            BeatInfo beatInfo=JSON.parseObject(getRealMsg(msgStr),BeatInfo.class);
+            log.info(beatInfo.toString());
+            if(!AcceptorIdleStateTrigger.dataMap.containsKey(ctx.channel().remoteAddress())){
+                AcceptorIdleStateTrigger.dataMap.put(ctx.channel().remoteAddress(),beatInfo.getNamespaceId()+"##"+beatInfo.getServiceName()+"##"+beatInfo.getIp()+"##"+beatInfo.getPort());
+            }
+            AcceptorIdleStateTrigger.readIdleTimesMap.put(ctx.channel().remoteAddress(),0);
         }else if(msgStr.startsWith(Constants.REGISTER_SERVICE_ROUND)&&msgStr.endsWith(Constants.REGISTER_SERVICE_ROUND)){
             log.info("=====服务端接收到注册消息如下======");
             Instance instance= JSON.parseObject(getRealMsg(msgStr),Instance.class);
