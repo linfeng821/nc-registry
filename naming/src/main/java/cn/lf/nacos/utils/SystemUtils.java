@@ -12,6 +12,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+//读取配置文件cluster.conf文件
+//mapping包含serverIp和nettyServerIp的对应关系
+//readClusterConf返回的serversList包含server的服务器集群IP端口列表
 public class SystemUtils {
 
     public static void main(String[]args) throws IOException{
