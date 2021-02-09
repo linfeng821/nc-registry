@@ -1,10 +1,12 @@
 package cn.lf.nacos.core;
 
 import cn.lf.nacos.cluster.Server;
+import cn.lf.nacos.consistency.ConsistencyService;
 import cn.lf.nacos.pojo.Instance;
 import cn.lf.nacos.pojo.ServiceInfo;
 import cn.lf.nacos.push.ServiceChangeEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +20,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class ServiceManager implements ApplicationListener<ServiceChangeEvent> {
     
-    
+    @Autowired
+    ConsistencyService consistencyService;
+
     //Map<namespaceId,Map<serviceName,Service>>  内存注册表
     private Map<String, Map<String,Service>> serviceMap=new ConcurrentHashMap<>();
 
@@ -47,6 +51,7 @@ public class ServiceManager implements ApplicationListener<ServiceChangeEvent> {
             log.info("第一次创建该服务"+service);
             putService(service);
             service.init();
+            consistencyService.listen(namespaceId+"##"+serviceName,service);
         }
     }
 
@@ -76,12 +81,24 @@ public class ServiceManager implements ApplicationListener<ServiceChangeEvent> {
         instanceList.add(instance);
         Instances instances=new Instances();
         instances.setInstanceList(instanceList);
-
+        String key=namespaceId+"##"+serviceName;
+        consistencyService.put(key,instances,null);
     }
 
     @Override
     public void onApplicationEvent(ServiceChangeEvent serviceChangeEvent) {
+        Service service=serviceChangeEvent.getService();
+        String messageId=serviceChangeEvent.getMessageId();
 
+        putService(service);
+        log.info("服务注册完成，内存注册表"+serviceMap);
+
+        String namespaceId=service.getNamespaceId();
+        String serviceName=service.getName();
+
+        if(messageId==null){
+            consistencyService.notifyCluster(namespaceId+"##"+service);
+        }
     }
 
     public Map<String, ServiceInfo> getServices(String namespaceId){
