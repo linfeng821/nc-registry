@@ -3,6 +3,7 @@ package cn.lf.nacos.cluster;
 
 import cn.lf.nacos.common.Constants;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Repository;
 
@@ -17,9 +18,13 @@ public class DistroMapper implements ServerChangeListener{
 
     private List<String> healthyList=new ArrayList<>();
 
+    @Autowired
+    ServerListManager serverListManager;
+
     @PostConstruct
     public void init(){
         //注册观察者
+        serverListManager.listen(this);
     }
 
     @Override
