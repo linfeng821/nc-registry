@@ -1,10 +1,12 @@
 package cn.lf.nacos.core;
 
 import cn.lf.nacos.cluster.Server;
+import cn.lf.nacos.cluster.ServerListManager;
 import cn.lf.nacos.consistency.ConsistencyService;
 import cn.lf.nacos.pojo.Instance;
 import cn.lf.nacos.pojo.ServiceInfo;
 import cn.lf.nacos.push.ServiceChangeEvent;
+import cn.lf.nacos.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
@@ -19,6 +21,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Component
 public class ServiceManager implements ApplicationListener<ServiceChangeEvent> {
+
+    @Autowired
+    ServerListManager serverListManager;
     
     @Autowired
     ConsistencyService consistencyService;
@@ -101,7 +106,13 @@ public class ServiceManager implements ApplicationListener<ServiceChangeEvent> {
         }
     }
 
+    /**
+     * 通过namespaceId拿到实例列表,并返回给客户端
+     * @param namespaceId
+     * @return
+     */
     public Map<String, ServiceInfo> getServices(String namespaceId){
+        //Map<namespaceId,Map<serviceName,Service>>  从内存注册表中根据namespaceId拿出里层的map
         Map<String,Service> serviceMap0= serviceMap.get(namespaceId);
         Map<String,ServiceInfo> serviceInfoMap=new ConcurrentHashMap<>();
         for(Map.Entry<String,Service> entry: serviceMap0.entrySet()){
@@ -109,7 +120,17 @@ public class ServiceManager implements ApplicationListener<ServiceChangeEvent> {
             ServiceInfo serviceInfo=new ServiceInfo();
             serviceInfo.setName(service.getName());
             serviceInfo.setInstances(service.getClusterMap().get(service.getNamespaceId()+"##"+service.getName()));
-
+            //给客户端返回健康的server实例
+            List<Server> healthyServers = serverListManager.getHealthyServers();
+            StringBuilder serverClusters=new StringBuilder();
+            //加上serverIp对应得nettyIp
+            Map<String,String> mappingMap= SystemUtils.mappingMap;
+            for(Server server:healthyServers){
+                serverClusters.append(server.getKey()+","+mappingMap.get(server.getKey())+"##");
+            }
+            //去掉尾部##
+            String serverClusterStr=serverClusters.substring(0,serverClusters.lastIndexOf("##"));
+            serviceInfo.setClusters(serverClusterStr);
             serviceInfoMap.put(service.getName(),serviceInfo);
         }
         return serviceInfoMap;

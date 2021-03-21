@@ -42,13 +42,22 @@ public class ServerHandler extends SimpleChannelInboundHandler<MessageProtocol> 
             BeatInfo beatInfo=JSON.parseObject(getRealMsg(msgStr),BeatInfo.class);
             log.info(beatInfo.toString());
             if(!AcceptorIdleStateTrigger.dataMap.containsKey(ctx.channel().remoteAddress())){
+                //接收到某个实例的第一次消息(包括注册或心跳)，就把该实例的socketAddress与它的namespaceId和serviceName存起来，方便后续在内存注册表剔除该实例
                 AcceptorIdleStateTrigger.dataMap.put(ctx.channel().remoteAddress(),beatInfo.getNamespaceId()+"##"+beatInfo.getServiceName()+"##"+beatInfo.getIp()+"##"+beatInfo.getPort());
             }
+            //System.out.println(AcceptorIdleStateTrigger.dataMap);
+            //{/127.0.0.1:56454=36a3c1fa-646a-4bec-ab10-b0427cfe4278##abcd##192.168.153.1##8081, /127.0.0.1:56455=36a3c1fa-646a-4bec-ab10-b0427cfe4278##abcd##192.168.153.1##8082}
+
+            //收到心跳就把读空闲次数重新设置为0
             AcceptorIdleStateTrigger.readIdleTimesMap.put(ctx.channel().remoteAddress(),0);
         }else if(msgStr.startsWith(Constants.REGISTER_SERVICE_ROUND)&&msgStr.endsWith(Constants.REGISTER_SERVICE_ROUND)){
             log.info("=====服务端接收到注册消息如下======");
             Instance instance= JSON.parseObject(getRealMsg(msgStr),Instance.class);
             log.info(instance.toString());
+            //接收到某个实例的第一次消息(包括注册或心跳)，就把该实例的socketAddress与它的namespaceId和serviceName存起来，方便后续在内存注册表剔除该实例
+            if(!AcceptorIdleStateTrigger.dataMap.containsKey(ctx.channel().remoteAddress())){
+                AcceptorIdleStateTrigger.dataMap.put(ctx.channel().remoteAddress(),instance.getNamespaceId()+"##"+instance.getServiceName()+"##"+instance.getIp()+"##"+instance.getPort());
+            }
             while(true){
                 if(isStartFlag){
                     break;
