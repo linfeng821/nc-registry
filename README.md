@@ -3,7 +3,7 @@
 Registry注册中心
 ====
 
-在学习了SpringCloud的各个组件的使用以及研究过相关源码后，为了更好地理解其内部实现原理，模仿了nacos的部分设计思想，自己实现了该注册中心，代码量4000+，代码中有详细的注释，使用netty实现了服务注册，服务心跳，服务健康检查，服务发现，服务重连等功能，使用Http请求完成集群间的同步以及心跳问题。后面可能还会继续实现负载均衡器，网关路由，限流等功能......
+在学习了nacos源码，为了更好地理解其内部实现原理，模仿了nacos的部分设计思想，自己实现了该注册中心，代码量4000+，代码中有详细的注释，使用netty实现了服务注册，服务心跳，服务健康检查，服务发现，服务重连等功能，使用Http请求完成集群间的同步以及心跳问题。后面可能还会继续实现负载均衡器等功能......
 
 registry核心功能点:
 -------
@@ -20,8 +20,5 @@ registry核心功能点:
 
 registry注册中心源码图:
 ------
-![image](https://github.com/lzj-github/registry/blob/master/naming/src/main/resources/Registry%E6%B3%A8%E5%86%8C%E4%B8%AD%E5%BF%83%E6%BA%90%E7%A0%81%E5%9B%BE.png)
+![image](https://github.com/linfeng821/nc-registry/blob/master/naming/src/main/resources/conf/Registry%E6%B3%A8%E5%86%8C%E4%B8%AD%E5%BF%83%E6%BA%90%E7%A0%81%E5%9B%BE.png)
 
-registry负载均衡源码图:
-------
-![image](https://github.com/lzj-github/registry/blob/master/naming/src/main/resources/Registry%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%BA%90%E7%A0%81%E5%9B%BE.png)
