@@ -7,6 +7,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.HashedWheelTimer;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,9 @@ import java.util.concurrent.CountDownLatch;
 @Slf4j
 @Component
 public class NettyClient {
+
+    //获取延时队列
+    private final HashedWheelTimer timer  =new HashedWheelTimer();
 
     private Bootstrap bootstrap;
 
