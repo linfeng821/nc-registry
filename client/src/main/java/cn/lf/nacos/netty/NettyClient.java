@@ -1,12 +1,17 @@
 package cn.lf.nacos.netty;
 
+import cn.lf.nacos.common.Constants;
 import cn.lf.nacos.config.DiscoverProperties;
+import cn.lf.nacos.core.HostReactor;
+import cn.lf.nacos.naming.NamingServiceImpl;
+import cn.lf.nacos.netty.handler.ConnectionWatchDog;
+import cn.lf.nacos.netty.handler.HeartBeatClientHandler;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.HashedWheelTimer;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -15,11 +20,14 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 @Data
 @Slf4j
 @Component
 public class NettyClient {
+
+    private static volatile NettyClient nettyClient = null;
 
     //获取延时队列
     private final HashedWheelTimer timer  =new HashedWheelTimer();
@@ -33,6 +41,12 @@ public class NettyClient {
     @Autowired
     DiscoverProperties discoverProperties;
 
+    @Autowired
+    private DiscoverProperties discoveryProperties;
+
+    @Autowired
+    private NamingServiceImpl nacosNamingService;
+
     public static Channel channel;
 
     //存储健康servers的ip列表
@@ -45,8 +59,14 @@ public class NettyClient {
 
     public static String nettyServer;
 
-    //初始化的index， 随机选择一个server进行通信
-    public int index;
+    @Autowired
+    private HostReactor hostReactor;
+
+    @Autowired
+    private final ConnectorIdleStateTrigger idleStateTrigger;
+
+    //初始化的index，随机选择一个server通信
+    public static int index;
 
     //将discoverProperties中mappingMap包含的服务器server地址和netty地址
     //存储到nettyClient的servers，nettyServers中
@@ -80,8 +100,30 @@ public class NettyClient {
             bootstrap.group(group)
                     //使用NioSocketChannel做作为客户端的通道实现
                     .channel(NioSocketChannel.class);
+            //手动传参，不然报空指针！！！
+            final ConnectionWatchDog watchDog=new ConnectionWatchDog(bootstrap,timer, discoveryProperties,nacosNamingService,true) {
+                @Override
+                public ChannelHandler[] handlers() {
+                    return new ChannelHandler[]{
+                            new MessageEncoder(),//编码器
+                            this,
+                            new IdleStateHandler(0, Constants.DEFAULT_SEND_HEART_BEAT_INTERVAL,0, TimeUnit.SECONDS),
+                            idleStateTrigger,
+                            new MessageDecoder(),//解码器
+                            new HeartBeatClientHandler(hostReactor)
+                    };
+                }
+            };
+            bootstrap.handler(new ChannelInitializer<SocketChannel>() {
+                @Override
+                protected void initChannel(SocketChannel ch) throws Exception {
+                    //加入处理器
+                    ChannelPipeline pipeline = ch.pipeline();
+                    pipeline.addLast(watchDog.handlers());
+                }
+            });
 
-            bootstrap.connect(nettyServer.split(":")[0],Integer.parseInt(nettyServer.split(":")[1])).sync();
+            channelFuture=bootstrap.connect(nettyServer.split(":")[0],Integer.parseInt(nettyServer.split(":")[1])).sync();
             log.info("客户端连接上"+NettyClient.getKeyBuValue(nettyServer));
             channel = channelFuture.channel();
             log.info("连接服务器成功");

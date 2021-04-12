@@ -94,14 +94,21 @@ public class ServiceManager implements ApplicationListener<ServiceChangeEvent> {
     public void onApplicationEvent(ServiceChangeEvent serviceChangeEvent) {
         Service service=serviceChangeEvent.getService();
         String messageId=serviceChangeEvent.getMessageId();
-
+        //放进内存注册表
         putService(service);
         log.info("服务注册完成，内存注册表"+serviceMap);
-
+        //把同步的缓存map更新
         String namespaceId=service.getNamespaceId();
         String serviceName=service.getName();
+        List<Instance> instanceList=getService(namespaceId,serviceName).allIPs(namespaceId+"##"+serviceName);
+        Instances instances=new Instances();
+        instances.setInstanceList(instanceList);
+        consistencyService.setInstance(namespaceId+"##"+serviceName,instances);
+        log.info("更新缓存dataMap成功:"+consistencyService.getInstances());
 
+        //messageId为null才进行集群同步,否则不进行集群同步
         if(messageId==null){
+            //同步集群信息
             consistencyService.notifyCluster(namespaceId+"##"+service);
         }
     }

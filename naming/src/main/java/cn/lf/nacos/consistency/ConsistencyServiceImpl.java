@@ -79,6 +79,7 @@ public class ConsistencyServiceImpl implements ConsistencyService{
 
     public void onPut(String key,Instances instances,String messageId){
         dataMap.put(key,instances);
+        //namespaceId+serviceName
         notifier.addTask(key,messageId);
     }
 
